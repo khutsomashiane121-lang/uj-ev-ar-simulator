@@ -1489,6 +1489,55 @@
 
         showMessage('🔄 Reset to APK campus', 'info');
       }
+      // ==================== WINDOW LOAD & INITIALIZATION ====================
+      window.onload = function() {
+        initMap();
+        updateUI();
+
+        // Check if device supports device orientation
+        if (window.DeviceOrientationEvent) {
+          console.log('✅ Device orientation supported');
+        } else {
+          console.log('⚠ Device orientation not supported - using simulated compass');
+        }
+
+        // Check if device supports geolocation
+        if (navigator.geolocation) {
+          console.log('✅ Geolocation supported');
+        } else {
+          console.log('⚠ Geolocation not supported');
+        }
+
+        // Auto-prompt for location on mobile devices
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+          setTimeout(() => {
+            const shouldUseGPS = confirm('Would you like to use your current GPS location as the starting point?');
+            if (shouldUseGPS) {
+              useMyLocation();
+            }
+          }, 1000);
+        }
+      };
+
+      // ==================== WINDOW UNLOAD CLEANUP ====================
+      window.onbeforeunload = function() {
+        stopARUpdates();
+      };
+
+      // ==================== CONSOLE WELCOME MESSAGE ====================
+      console.log('%c🚗 UJ EV AR Navigator', 'font-size: 20px; font-weight: bold; color: #667eea;');
+      console.log('%c📱 Enhanced AR Navigation System', 'font-size: 14px; color: #28a745;');
+      console.log('%cFeatures:', 'font-weight: bold;');
+      console.log('✅ GPS Location Support');
+      console.log('✅ Directional AR Navigation');
+      console.log('✅ 3D Charging Station Scene');
+      console.log('✅ Real-time Battery Management');
+      console.log('✅ Route Planning & Energy Estimation');
+      console.log('\n%cDeveloped for UJ Final Year Project 2025', 'color: #764ba2; font-style: italic;');
+      
+    </script>
+  </body>
+</html>
 
       // === INITIALIZATION ===
       window.onload = function() {
