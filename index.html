@@ -651,8 +651,7 @@
         arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true;">
-        <a-camera gps-camera="minDistance: 5; maxDistance: 2000;" rotation-reader look-controls-enabled="true"></a-camera>
-        <a-entity id="arStations"></a-entity>
+        <a-camera gps-camera="minDistance: 5; maxDistance: 2000;" rotation-reader></a-camera>
       </a-scene>
     </div>
 
@@ -727,7 +726,7 @@
         fourways: { name: 'Fourways Mall', lat: -26.0119, lng: 28.0078, distance: 18 }
       };
 
-      // === CHARGING STATIONS (closer to UJ campuses) ===
+      // === CHARGING STATIONS ===
       const chargingStations = [
         { id: 1, name: "Sandton City Hub", lat: -26.1076, lng: 28.0567, power: 150, type: "DC Fast", available: 3, cost: 8.50 },
         { id: 2, name: "Rosebank Mall", lat: -26.1449, lng: 28.0407, power: 50, type: "DC Fast", available: 2, cost: 7.20 },
@@ -812,7 +811,6 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            // Find nearest UJ campus
             let nearestCampus = 'apk';
             let minDistance = Infinity;
 
@@ -824,12 +822,10 @@
               }
             });
 
-            // If within 5km of a campus, use that campus
             if (minDistance < 5) {
-              selectCampus(nearestCampus);
+              selectCampusById(nearestCampus);
               showMessage(`📍 You're near ${ujCampuses[nearestCampus].name}! (${minDistance.toFixed(1)} km away)`, 'success');
             } else {
-              // Use actual GPS location
               vehicle.lat = lat;
               vehicle.lng = lng;
               updateUserMarker();
@@ -842,6 +838,15 @@
             showMessage('⚠️ Could not get location. Using APK campus.', 'warning');
           }
         );
+      }
+
+      function selectCampusById(campusId) {
+        vehicle.campus = campusId;
+        vehicle.lat = ujCampuses[campusId].lat;
+        vehicle.lng = ujCampuses[campusId].lng;
+        document.getElementById('currentCampus').textContent = ujCampuses[campusId].shortName;
+        updateUserMarker();
+        map.setView([vehicle.lat, vehicle.lng], 13);
       }
 
       // === CALCULATIONS ===
@@ -919,7 +924,6 @@
 
         selectedDestination = destinations[destKey];
         
-        // Recalculate actual distance from current position
         const actualDistance = calculateDistance(
           vehicle.lat, vehicle.lng,
           selectedDestination.lat, selectedDestination.lng
@@ -959,7 +963,6 @@
 
         document.getElementById('journeyInfo').style.display = 'block';
 
-        // Add destination marker
         if (destinationMarker) map.removeLayer(destinationMarker);
 
         const redIcon = L.icon({
@@ -975,7 +978,6 @@
           .addTo(map)
           .bindPopup(`<b>Destination</b><br>${selectedDestination.name}<br>${actualDistance.toFixed(1)} km`);
 
-        // Show route to destination
         if (routingControl) map.removeControl(routingControl);
 
         routingControl = L.Routing.control({
@@ -1287,7 +1289,6 @@
         const arControls = document.getElementById('arControls');
 
         if (arActive) {
-          // Check if stations have been found
           if (nearbyStationsForAR.length === 0) {
             showMessage('⚠️ Find charging stations first before using AR!', 'warning');
             arActive = false;
@@ -1311,7 +1312,6 @@
               arControls.classList.add('active');
               arBtn.textContent = '🗺️ Map View';
 
-              // Update debug info
               document.getElementById('arDebug').textContent = 
                 `Your location: ${vehicle.lat.toFixed(4)}, ${vehicle.lng.toFixed(4)} | Stations: ${nearbyStationsForAR.length}`;
 
@@ -1331,14 +1331,27 @@
           arInfo.classList.remove('active');
           arControls.classList.remove('active');
           arBtn.textContent = '📱 AR View';
+          
+          // Clear AR markers
+          const scene = document.querySelector('a-scene');
+          if (scene) {
+            const markers = scene.querySelectorAll('[gps-entity-place]');
+            markers.forEach(m => m.remove());
+          }
         }
       }
 
       function addARMarkers() {
-        const arStations = document.getElementById('arStations');
-        if (!arStations) return;
+        const scene = document.querySelector('a-scene');
+        if (!scene) {
+          console.error('A-Frame scene not found');
+          return;
+        }
 
-        arStations.innerHTML = '';
+        // Clear existing markers
+        const existingMarkers = scene.querySelectorAll('[gps-entity-place]');
+        existingMarkers.forEach(m => m.remove());
+
         const safeRange = calculateSafeRange();
         let reachableCount = 0;
 
@@ -1357,56 +1370,55 @@
           const arMarker = document.createElement('a-entity');
           arMarker.setAttribute('gps-entity-place', `latitude: ${station.lat}; longitude: ${station.lng}`);
           
-          // Larger, more visible markers
           arMarker.innerHTML = `
             <a-box 
-              position="0 2 0" 
-              scale="5 6 5" 
+              position="0 15 0" 
+              scale="10 10 10" 
               color="${color}"
               material="opacity: 0.9"
               animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear"
-              animation__pulse="property: scale; to: 5.5 6.5 5.5; dir: alternate; loop: true; dur: 1500">
+              animation__pulse="property: scale; to: 11 11 11; dir: alternate; loop: true; dur: 1500">
             </a-box>
             <a-cylinder
-              position="0 6 0"
-              radius="2"
-              height="3"
+              position="0 25 0"
+              radius="4"
+              height="8"
               color="${color}"
-              animation="property: position; to: 0 7 0; dir: alternate; loop: true; dur: 1000">
+              animation="property: position; to: 0 28 0; dir: alternate; loop: true; dur: 1000">
             </a-cylinder>
             <a-text
               value="${station.name}"
               align="center"
-              position="0 10 0"
+              position="0 35 0"
               scale="8 8 8"
               color="#FFFFFF"
               background="#000000"
               baseline="center"
-              width="4">
+              width="6">
             </a-text>
             <a-text
               value="${station.distance.toFixed(1)}km | ${station.power}kW"
               align="center"
-              position="0 8 0"
+              position="0 30 0"
               scale="6 6 6"
               color="${textColor}"
               background="#1a1a1a"
               baseline="center"
-              width="4">
+              width="6">
             </a-text>
             <a-text
               value="${isReachable ? 'REACHABLE' : 'OUT OF RANGE'}"
               align="center"
-              position="0 6 0"
-              scale="5 5 5"
+              position="0 40 0"
+              scale="7 7 7"
               color="${isReachable ? '#00FF00' : '#FF0000'}"
               background="#000000"
               baseline="center"
-              width="4">
+              width="6">
             </a-text>
           `;
           
-          arStations.appendChild(arMarker);
+          scene.appendChild(arMarker);
         });
 
         document.getElementById('arInfoText').textContent = 
@@ -1414,7 +1426,7 @@
             ? `⚡ ${reachableCount} reachable | ${safeRange.toFixed(0)} km range`
             : `⚠️ No stations in range (${safeRange.toFixed(0)} km)`;
 
-        console.log('AR markers added to scene');
+        console.log('AR markers added successfully');
       }
 
       function recenterAR() {
